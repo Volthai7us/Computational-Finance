@@ -49,15 +49,15 @@ class Utils:
     @staticmethod
     def get_portfolio_details():
         num_options = st.number_input(
-            "Kaç opsiyon kullanacaksınız:",
+            "Number of Options:",
             min_value=0, value=1, step=1
         )
         num_stocks = st.number_input(
-            "Kaç hisse senedi kullanacaksınız:",
+            "Number of Stocks:",
             min_value=0, value=0, step=1
         )
         spot_price = st.number_input(
-            "Spot fiyatı:",
+            "Spot Price:",
             value=100.0, step=1.0
         )
 
@@ -79,23 +79,23 @@ class Utils:
         option_details = []
 
         for i in range(num_options):
-            st.subheader(f"Opsiyon {i+1} Bilgileri")
+            st.subheader(f"Option {i+1} Info")
             option_type = st.selectbox(
-                f"Opsiyon {i+1} Tipi:",
+                f"Option {i+1} Type:",
                 ["CALL", "PUT"]
             )
             option_action = st.selectbox(
-                f"Opsiyon {i+1} Alım/Satım:",
+                f"Option {i+1} Action:",
                 ["BUY", "SELL"]
             )
             strike_price = st.number_input(
-                f"Opsiyon {i+1} Strike fiyatı:",
+                f"Option {i+1} Strike Price:",
                 min_value=0.1, value=100.0, step=1.0
             )
             option_price = 0
             if not auto_option_pricing:
                 option_price = st.number_input(
-                    f"Opsiyon {i+1} Opsiyon fiyatı:",
+                    f"Option {i+1} Price:",
                     min_value=0.1, value=0.1, step=1.0
                 )
             option_details.append(
@@ -348,6 +348,14 @@ st.sidebar.title("Navigation")
 selection = st.sidebar.radio("Go to", list(pages.keys()))
 if selection == "Example Portfolios":
     st.title("Example Portfolios")
+    st.markdown("Example portfolios showcase different option trading strategies that you can explore and analyze. These portfolios are constructed using a combination of options and stocks, and their payoff profiles vary based on market conditions and strategy objectives.")
+
+    st.markdown("Each example portfolio consists of a name, a combination of stocks, and a set of options. By visualizing the portfolio's payoff, you can gain insights into how the portfolio performs under different scenarios and market conditions.")
+
+    st.markdown("You can adjust the risk-free rate, volatility, and time to customize the example portfolios based on your preferences and analyze their potential outcomes.")
+
+    st.markdown(
+        "Explore the example portfolios to learn about various option trading strategies and their potential payoff profiles.")
 
     risk_free_rate = st.number_input(
         "Risk Free Rate:",
@@ -368,8 +376,10 @@ if selection == "Example Portfolios":
         portfolio.visualize(-100, 200, 5, True)
 
 elif selection == "Create Portfolio":
-    portfolio = Portfolio("Portfolio", [], [])
     st.title("Create a New Portfolio")
+    st.markdown("Create your own portfolio by selecting the number of stocks and options, providing their details, and visualizing the payoff profile of the portfolio.")
+
+    portfolio = Portfolio("Portfolio", [], [])
     num_options, num_stocks, stock_price, option_details, risk_free_rate, volatility, time, auto_option_pricing = Utils.get_portfolio_details()
     portfolio.add_stock(Stock(stock_price), num_stocks)
 
@@ -387,8 +397,38 @@ elif selection == "Create Portfolio":
 
 elif selection == "Black Scholes Model":
     st.title("Black Scholes Model")
+    st.markdown("The Black-Scholes model is a mathematical model used to calculate the theoretical price of options. It provides a framework for pricing European-style options, which can only be exercised at expiration. The model was developed by economists Fischer Black and Myron Scholes in 1973, and it assumes several key factors:")
+    st.markdown(
+        "- The price of the underlying asset follows a geometric Brownian motion.")
+    st.markdown(
+        "- The market is efficient and there are no transaction costs or restrictions on short-selling.")
+    st.markdown("- The risk-free interest rate is known and constant.")
+    st.markdown(
+        "- The volatility of the underlying asset's returns is constant.")
+
+    st.markdown("The Black-Scholes model calculates the fair value of an option by considering these factors and using mathematical formulas. It takes into account the current price of the underlying asset, the strike price of the option, the time to expiration, the risk-free interest rate, and the volatility of the underlying asset.")
+
+    st.markdown("The model provides insights into the factors that influence option prices, such as changes in the underlying asset's price, time to expiration, and volatility. It has been widely used in options trading and has contributed to the development of various option pricing and trading strategies.")
+
+    st.markdown("---")
     Utils.black_scholes_analysis()
 
 elif selection == "Home":
     st.title("Welcome to Option Visualizer")
-    st.markdown("This is a simple tool to visualize the payoff of your option strategies. You can create your own portfolio or select from the example portfolios.")
+    st.markdown("This is a simple tool to visualize the payoff of your option strategies. Options are financial derivatives that give the holder the right, but not the obligation, to buy or sell an underlying asset at a predetermined price within a specified time period.")
+
+    st.markdown("The main purposes of options include:")
+    st.markdown(
+        "- **Hedging**: Protecting against potential losses in an existing investment.")
+    st.markdown(
+        "- **Speculation**: Profiting from market movements without owning the underlying asset.")
+    st.markdown(
+        "- **Income Generation**: Selling options to collect premiums and generate income.")
+    st.markdown(
+        "- **Risk Management**: Using options to manage and control risk exposure.")
+    st.markdown(
+        "- **Leverage**: Controlling larger positions with a smaller investment.")
+
+    st.markdown("Please keep in mind that options trading involves risks and complexities. It's important to have a good understanding of the underlying assets, market conditions, and option strategies before engaging in options trading.")
+
+    st.markdown("---")
