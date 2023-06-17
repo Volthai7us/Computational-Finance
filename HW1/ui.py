@@ -344,7 +344,7 @@ pages = {
     "Black Scholes Model": "black_scholes"
 }
 
-st.sidebar.title("Navigation")
+st.sidebar.title("Emir Soyturk")
 selection = st.sidebar.radio("Go to", list(pages.keys()))
 if selection == "Example Portfolios":
     st.title("Example Portfolios")
