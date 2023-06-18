@@ -77,7 +77,7 @@ class Utils:
 
         st.markdown("---")
 
-        checkbox_col = st.columns(3)
+        checkbox_col = st.columns(2)
 
         with checkbox_col[0]:
             only_show_cumulative = st.checkbox(
@@ -85,41 +85,35 @@ class Utils:
         with checkbox_col[1]:
             auto_option_pricing = st.checkbox(
                 "Auto Option Pricing", value=True)
-        with checkbox_col[2]:
-            advanced_options = st.checkbox("Advanced Options", value=False)
 
-        risk_free_rate = 0.05
-        volatility = 0.25
-        time = 1
-        arbitrage_check_type = "Simple"
+        option_price = 0.1
 
-        if advanced_options:
-            st.markdown("---")
+        st.markdown("---")
 
-            advanced_col = st.columns(4)
-            with advanced_col[0]:
-                risk_free_rate = st.number_input(
-                    "Risk Free Rate:",
-                    value=0.05, step=0.01
-                )
+        advanced_col = st.columns(4)
+        with advanced_col[0]:
+            risk_free_rate = st.number_input(
+                "Risk Free Rate:",
+                value=0.05, step=0.01
+            )
 
-            with advanced_col[1]:
-                volatility = st.number_input(
-                    "Volatility:",
-                    value=0.25, step=0.01
-                )
+        with advanced_col[1]:
+            volatility = st.number_input(
+                "Volatility:",
+                value=0.25, step=0.01
+            )
 
-            with advanced_col[2]:
-                time = st.number_input(
-                    "Time:",
-                    value=1.0, step=0.1
-                )
+        with advanced_col[2]:
+            time = st.number_input(
+                "Time:",
+                value=1.0, step=0.1
+            )
 
-            with advanced_col[3]:
-                arbitrage_check_type = st.selectbox(
-                    "Arbitrage Check Type:",
-                    ["None", "Simple", "Black-Scholes"]
-                )
+        with advanced_col[3]:
+            arbitrage_check_type = st.selectbox(
+                "Arbitrage Check Type:",
+                ["Simple", "Black-Scholes", "None"]
+            )
 
         option_details = []
 
@@ -127,59 +121,63 @@ class Utils:
         for i in range(num_options):
             st.subheader(f"Option {i+1} Info")
 
-            col1 = st.columns(3)
-
-            with col1[0]:
-                option_type = OptionType.CALL if st.selectbox(
-                    f"Option {i+1} Type:",
-                    ["CALL", "PUT"]
-                ) == "CALL" else OptionType.PUT
-
-            with col1[1]:
-                option_action = OrderType.BUY if st.selectbox(
-                    f"Option {i+1} Action:",
-                    ["BUY", "SELL"]
-                ) == "BUY" else OrderType.SELL
-
-            with col1[2]:
-                strike_price = st.number_input(
-                    f"Option {i+1} Strike Price:",
-                    min_value=0.1, value=100.0, step=1.0
-                )
-            option_price = 0
             if not auto_option_pricing:
-                option_price = st.number_input(
-                    f"Option {i+1} Price:",
-                    min_value=0.1, value=0.1, step=1.0
-                )
+                col2 = st.columns(2)
+                with col2[0]:
+                    option_type = OptionType.CALL if st.selectbox(
+                        f"Option {i+1} Type:",
+                        ["CALL", "PUT"]
+                    ) == "CALL" else OptionType.PUT
+
+                with col2[1]:
+                    option_action = OrderType.BUY if st.selectbox(
+                        f"Option {i+1} Action:",
+                        ["BUY", "SELL"]
+                    ) == "BUY" else OrderType.SELL
+
+                col3 = st.columns(2)
+
+                with col3[0]:
+                    strike_price = st.number_input(
+                        f"Option {i+1} Strike Price:",
+                        min_value=0.1, value=100.0, step=1.0
+                    )
+
+                with col3[1]:
+                    option_price = st.number_input(
+                        f"Option {i+1} Price:",
+                        min_value=0.1, value=0.1, step=1.0
+                    )
+            else:
+                col1 = st.columns(3)
+
+                with col1[0]:
+                    option_type = OptionType.CALL if st.selectbox(
+                        f"Option {i+1} Type:",
+                        ["CALL", "PUT"]
+                    ) == "CALL" else OptionType.PUT
+
+                with col1[1]:
+                    option_action = OrderType.BUY if st.selectbox(
+                        f"Option {i+1} Action:",
+                        ["BUY", "SELL"]
+                    ) == "BUY" else OrderType.SELL
+
+                with col1[2]:
+                    strike_price = st.number_input(
+                        f"Option {i+1} Strike Price:",
+                        min_value=0.1, value=100.0, step=1.0
+                    )
+
             if not auto_option_pricing and arbitrage_check_type != "None":
                 if arbitrage_check_type == "Simple":
-                    if option_type == OptionType.CALL:
-                        if option_action == OrderType.BUY and spot_price - strike_price > option_price:
-                            st.error("Arbitrage Detected!")
-                            st.error(
-                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
-                            st.error(
-                                "The difference between the stock price and the strike price is greater than the option price. This is an arbitrage opportunity.")
-                        elif option_action == OrderType.SELL and spot_price - strike_price < option_price:
-                            st.error("Arbitrage Detected!")
-                            st.error(
-                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
-                            st.error(
-                                "The difference between the stock price and the strike price is less than the option price. This is an arbitrage opportunity.")
-                    elif option_type == OptionType.PUT:
-                        if option_action == OrderType.BUY and strike_price - spot_price > option_price:
-                            st.error("Arbitrage Detected!")
-                            st.error(
-                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
-                            st.error(
-                                "The difference between the strike price and the stock price is greater than the option price. This is an arbitrage opportunity.")
-                        elif option_action == OrderType.SELL and strike_price - spot_price < option_price:
-                            st.error("Arbitrage Detected!")
-                            st.error(
-                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
-                            st.error(
-                                "The difference between the strike price and the stock price is less than the option price. This is an arbitrage opportunity.")
+                    (is_there_arbitrage, result) = Utils.check_arbitrage(
+                        strike_price, option_price, spot_price, option_type, option_action)
+
+                    if is_there_arbitrage:
+                        st.error("Arbitrage Detected!")
+                        st.error(result)
+
                 elif arbitrage_check_type == "Black-Scholes":
                     black_scholes_price = Utils.get_option_price(
                         option_type, spot_price, strike_price, risk_free_rate, volatility, time)
@@ -188,8 +186,6 @@ class Utils:
                         st.error("Arbitrage Detected!")
                         st.error(
                             f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}, Black-Scholes Price: ~{int(black_scholes_price * 100) / 100}")
-                        st.error(
-                            f"The difference between the option price and the Black-Scholes price is ~{int(diff * 100) / 100}. This is an arbitrage opportunity.")
 
             option_details.append(
                 (option_type, option_action, strike_price, option_price)
@@ -315,6 +311,50 @@ class Utils:
 
         return portfolios
 
+    @staticmethod
+    def check_arbitrage(strike_price, option_price, spot_price, option_type, order_type):
+        if option_type == OptionType.CALL:
+            if order_type == OrderType.BUY:
+                if spot_price > strike_price + option_price:
+                    arbitrage_result = f"Option is underpriced. Buy the option and short the underlying asset."
+                    return (True, arbitrage_result)
+            elif order_type == OrderType.SELL:
+                if spot_price < strike_price - option_price:
+                    arbitrage_result = f"Option is overpriced. Sell the option and buy the underlying asset."
+                    return (True, arbitrage_result)
+        elif option_type == OptionType.PUT:
+            if order_type == OrderType.BUY:
+                if spot_price < strike_price - option_price:
+                    arbitrage_result = f"Option is underpriced. Buy the option and short the underlying asset."
+                    return (True, arbitrage_result)
+            elif order_type == OrderType.SELL:
+                if spot_price > strike_price + option_price:
+                    arbitrage_result = f"Option is overpriced. Sell the option and buy the underlying asset."
+                    return (True, arbitrage_result)
+        return (False, "")
+
+    def check_arbitrage_between_pairs_of_options(option_1, option_2, i, j):
+        if option_1.option_type == option_2.option_type and option_1.order_type == option_2.order_type:
+            if option_1.option_type == OptionType.CALL:
+                if option_1.order_type == OrderType.BUY:
+                    if option_2.strike_price > option_1.strike_price and option_2.option_price > option_1.option_price:
+                        arbitrage_result = f"While Option {i} is cheaper than Option {j}, it has a higher strike price."
+                        return (True, arbitrage_result)
+                elif option_1.order_type == OrderType.SELL:
+                    if option_1.strike_price > option_2.strike_price and option_1.option_price > option_2.option_price:
+                        arbitrage_result = f"While Option {j} is cheaper than Option {i}, it has a higher strike price."
+                        return (True, arbitrage_result)
+            elif option_1.option_type == OptionType.PUT:
+                if option_1.order_type == OrderType.BUY:
+                    if option_1.strike_price > option_2.strike_price and option_1.option_price > option_2.option_price:
+                        arbitrage_result = f"While Option {j} is cheaper than Option {i}, it has a higher strike price."
+                        return (True, arbitrage_result)
+                elif option_1.order_type == OrderType.SELL:
+                    if option_2.strike_price > option_1.strike_price and option_2.option_price > option_1.option_price:
+                        arbitrage_result = f"While Option {i} is cheaper than Option {j}, it has a higher strike price."
+                        return (True, arbitrage_result)
+        return (False, "")
+
 
 class Option:
     def __init__(self, option_type, order_type, strike_price, spot_price, option_price=False, risk_free_rate=0.05, volatility=0.25, time=1):
@@ -355,7 +395,6 @@ class Option:
         return result
 
     def __str__(self) -> str:
-
         order_type_str = "BUY" if self.order_type == OrderType.BUY else "SELL"
         option_type_str = "CALL" if self.option_type == OptionType.CALL else "PUT"
 
@@ -528,47 +567,30 @@ elif selection == "Create Portfolio":
     portfolio = Portfolio("Portfolio", [], [])
     num_options, num_stocks, stock_price, stock_order_type, option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type, only_show_cumulative = Utils.get_portfolio_details()
 
-    if not auto_option_pricing:
-        if arbitrage_check_type == "Simple":
-            for i in range(num_options):
-                option_type_1, option_action_1, strike_price_1, option_price_1 = option_details[
-                    i]
-                for j in range(i+1, num_options):
-                    option_type_2, option_action_2, strike_price_2, option_price_2 = option_details[
-                        j]
+    st.markdown("---")
 
-                    # Check for arbitrage opportunity between pairs of options
-                    if option_type_1 == option_type_2 and option_action_1 == option_action_2:
-                        if option_type_1 == OptionType.CALL:
-                            if option_action_1 == OrderType.BUY:
-                                if strike_price_2 > strike_price_1 and option_price_2 > option_price_1:
-                                    st.error("Arbitrage Detected!")
-                                    st.error(
-                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
-                                    st.error(
-                                        f"The strike price of the {j + 1}th option is greater than the strike price of the {i + 1}th option, and the option price of the {j + 1}th option is greater than the option price of the {i + 1}th option. This is an arbitrage opportunity.")
-                            elif option_action_1 == OrderType.SELL:
-                                if strike_price_1 > strike_price_2 and option_price_1 > option_price_2:
-                                    st.error("Arbitrage Detected!")
-                                    st.error(
-                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
-                                    st.error(
-                                        f"The strike price of the {i + 1}th option is greater than the strike price of the {j + 1}th option, and the option price of the {i + 1}th option is greater than the option price of the {j + 1}th option. This is an arbitrage opportunity.")
-                        elif option_type_1 == OptionType.PUT:
-                            if option_action_1 == OrderType.BUY:
-                                if strike_price_1 > strike_price_2 and option_price_1 > option_price_2:
-                                    st.error("Arbitrage Detected!")
-                                    st.error(
-                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
-                                    st.error(
-                                        f"The strike price of the {i + 1}th option is greater than the strike price of the {j + 1}th option, and the option price of the {i + 1}th option is greater than the option price of the {j + 1}th option. This is an arbitrage opportunity.")
-                            elif option_action_1 == OrderType.SELL:
-                                if strike_price_2 > strike_price_1 and option_price_2 > option_price_1:
-                                    st.error("Arbitrage Detected!")
-                                    st.error(
-                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
-                                    st.error(
-                                        f"The strike price of the {j + 1}th option is greater than the strike price of the {i + 1}th option, and the option price of the {j + 1}th option is greater than the option price of the {i + 1}th option. This is an arbitrage opportunity.")
+    if not auto_option_pricing and arbitrage_check_type == "Simple":
+        for i in range(num_options):
+            option_type_1, option_action_1, strike_price_1, option_price_1 = option_details[
+                i]
+            for j in range(i+1, num_options):
+                option_type_2, option_action_2, strike_price_2, option_price_2 = option_details[
+                    j]
+
+                # Check for arbitrage opportunity between pairs of options
+                (is_there_arbitrage, reason) = Utils.check_arbitrage_between_pairs_of_options(
+                    Option(option_type_1, option_action_1, strike_price_1,
+                           stock_price, option_price_1, risk_free_rate, volatility, time),
+                    Option(option_type_2, option_action_2, strike_price_2,
+                           stock_price, option_price_2, risk_free_rate, volatility, time),
+                    i+1, j+1
+
+                )
+
+                if is_there_arbitrage:
+                    st.error(
+                        f"Arbitrage Detected Between Option {i+1} and Option {j+1}!")
+                    st.error(reason)
 
     if num_stocks > 0:
         portfolio.add_stock(Stock(stock_price, stock_order_type), num_stocks)
