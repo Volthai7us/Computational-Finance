@@ -61,6 +61,11 @@ class Utils:
             value=100.0, step=1.0
         )
 
+        stock_order_type = OrderType.BUY if st.selectbox(
+            "Stock Order Type:",
+            ["BUY", "SELL"]
+        ) == "BUY" else OrderType.SELL
+
         risk_free_rate = st.number_input(
             "Risk Free Rate:",
             value=0.05, step=0.01
@@ -75,19 +80,25 @@ class Utils:
         )
 
         auto_option_pricing = st.checkbox("Auto Option Pricing", value=True)
+        arbitrage_check_type = st.selectbox(
+            "Arbitrage Check Type:",
+            ["None", "Simple", "Black-Scholes"]
+        )
 
         option_details = []
 
         for i in range(num_options):
             st.subheader(f"Option {i+1} Info")
-            option_type = st.selectbox(
+            option_type = OptionType.CALL if st.selectbox(
                 f"Option {i+1} Type:",
                 ["CALL", "PUT"]
-            )
-            option_action = st.selectbox(
+            ) == "CALL" else OptionType.PUT
+
+            option_action = OrderType.BUY if st.selectbox(
                 f"Option {i+1} Action:",
                 ["BUY", "SELL"]
-            )
+            ) == "BUY" else OrderType.SELL
+
             strike_price = st.number_input(
                 f"Option {i+1} Strike Price:",
                 min_value=0.1, value=100.0, step=1.0
@@ -98,11 +109,50 @@ class Utils:
                     f"Option {i+1} Price:",
                     min_value=0.1, value=0.1, step=1.0
                 )
+            if not auto_option_pricing and arbitrage_check_type != "None":
+                if arbitrage_check_type == "Simple":
+                    if option_type == OptionType.CALL:
+                        if option_action == OrderType.BUY and spot_price - strike_price > option_price:
+                            st.error("Arbitrage Detected!")
+                            st.error(
+                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
+                            st.error(
+                                "The difference between the stock price and the strike price is greater than the option price. This is an arbitrage opportunity.")
+                        elif option_action == OrderType.SELL and spot_price - strike_price < option_price:
+                            st.error("Arbitrage Detected!")
+                            st.error(
+                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
+                            st.error(
+                                "The difference between the stock price and the strike price is less than the option price. This is an arbitrage opportunity.")
+                    elif option_type == OptionType.PUT:
+                        if option_action == OrderType.BUY and strike_price - spot_price > option_price:
+                            st.error("Arbitrage Detected!")
+                            st.error(
+                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
+                            st.error(
+                                "The difference between the strike price and the stock price is greater than the option price. This is an arbitrage opportunity.")
+                        elif option_action == OrderType.SELL and strike_price - spot_price < option_price:
+                            st.error("Arbitrage Detected!")
+                            st.error(
+                                f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}")
+                            st.error(
+                                "The difference between the strike price and the stock price is less than the option price. This is an arbitrage opportunity.")
+                elif arbitrage_check_type == "Black-Scholes":
+                    black_scholes_price = Utils.get_option_price(
+                        option_type, spot_price, strike_price, risk_free_rate, volatility, time)
+                    diff = abs(option_price - black_scholes_price)
+                    if diff > 0.1:
+                        st.error("Arbitrage Detected!")
+                        st.error(
+                            f"Stock Price: {spot_price}, Strike Price: {strike_price}, Option Price: {option_price}, Black-Scholes Price: ~{int(black_scholes_price * 100) / 100}")
+                        st.error(
+                            f"The difference between the option price and the Black-Scholes price is ~{int(diff * 100) / 100}. This is an arbitrage opportunity.")
+
             option_details.append(
                 (option_type, option_action, strike_price, option_price)
             )
 
-        return num_options, num_stocks, spot_price, option_details, risk_free_rate, volatility, time, auto_option_pricing
+        return num_options, num_stocks, spot_price, stock_order_type,  option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type
 
     @staticmethod
     def black_scholes_analysis():
@@ -168,47 +218,56 @@ class Utils:
 
     @staticmethod
     def get_example_portfolios(risk_free_rate, volatility, time):
+        option_buy_call_80 = Option(
+            OptionType.CALL, OrderType.BUY, 80, 100, False, risk_free_rate, volatility, time)
+        option_buy_call_120 = Option(
+            OptionType.CALL, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time)
+        option_put_buy_80 = Option(
+            OptionType.PUT, OrderType.BUY, 80, 100, False, risk_free_rate, volatility, time)
+        option_sell_call_80 = Option(
+            OptionType.CALL, OrderType.SELL, 80, 100, False, risk_free_rate, volatility, time)
+        option_sell_call_120 = Option(
+            OptionType.CALL, OrderType.SELL, 120, 100, False, risk_free_rate, volatility, time)
+        option_sell_call_100 = Option(OptionType.CALL, OrderType.SELL, 100, 100,
+                                      False, risk_free_rate, volatility, time)
+        option_buy_call_120 = Option(
+            OptionType.CALL, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time)
+        option_buy_put_120 = Option(
+            OptionType.PUT, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time)
+
         portfolios = [
             Portfolio("Bull Bear Spreads", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.CALL, OrderType.SELL, 120, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_buy_call_80, 1),
+                (option_sell_call_120, 1)]),
 
             Portfolio("Bear Spreads", [], [
-                (Option(OptionType.CALL, OrderType.SELL, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.CALL, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_sell_call_80, 1),
+                (option_buy_call_120, 1)]),
 
             Portfolio("Butterfly Spreads", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.CALL, OrderType.SELL, 100, 100,
-                        False, risk_free_rate, volatility, time), 2),
-                (Option(OptionType.CALL, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_buy_call_80, 1),
+                (option_sell_call_100, 2),
+                (option_buy_call_120, 1)]),
 
             Portfolio("Straddles", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.PUT, OrderType.BUY, 80, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_buy_call_80, 1),
+                (option_put_buy_80, 1)]),
 
             Portfolio("Straps", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 3),
-                (Option(OptionType.PUT, OrderType.BUY, 80, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_buy_call_80, 3),
+                (option_put_buy_80, 1)]),
 
             Portfolio("Strips", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.PUT, OrderType.BUY, 80, 100, False, risk_free_rate, volatility, time), 3)]),
+                (option_buy_call_80, 1),
+                (option_put_buy_80, 3)]),
 
             Portfolio("Strangle", [], [
-                (Option(OptionType.CALL, OrderType.BUY, 80, 100,
-                        False, risk_free_rate, volatility, time), 1),
-                (Option(OptionType.PUT, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time), 1)]),
+                (option_buy_call_80, 1),
+                (option_buy_put_120, 1)]),
 
             Portfolio("Covered Call", [
-                (Stock(100), 1)],
-                [(Option(OptionType.CALL, OrderType.SELL, 80, 100, False, risk_free_rate, volatility, time), 1)])
+                (Stock(100, OrderType.BUY), 1)],
+                [(option_sell_call_80, 1)])
         ]
 
         return portfolios
@@ -253,29 +312,31 @@ class Option:
         return result
 
     def __str__(self) -> str:
-        name = ""
-        if self.order_type == OrderType.BUY:
-            name += "BUY"
-        elif self.order_type == OrderType.SELL:
-            name += "SELL"
-        name += " "
-        if self.option_type == OptionType.CALL:
-            name += "CALL"
-        elif self.option_type == OptionType.PUT:
-            name += "PUT"
 
-        return name
+        order_type_str = "BUY" if self.order_type == OrderType.BUY else "SELL"
+        option_type_str = "CALL" if self.option_type == OptionType.CALL else "PUT"
+
+        return f"OPTION ({order_type_str} {option_type_str} {self.strike_price})"
 
 
 class Stock:
-    def __init__(self, price):
+    def __init__(self, price, order_type: OrderType):
         self.price = price
+        self.order_type = order_type
 
     def value(self, point):
-        return point
+        difference = point - self.price
+
+        if self.order_type == OrderType.BUY:
+            return difference
+        elif self.order_type == OrderType.SELL:
+            return -difference
+
+        return 0
 
     def __str__(self) -> str:
-        return "STOCK"
+        order_type_str = "BUY" if self.order_type == OrderType.BUY else "SELL"
+        return f"STOCK ({order_type_str})"
 
 
 class Portfolio:
@@ -290,7 +351,39 @@ class Portfolio:
         strike_prices = [option.strike_price for (
             option, quantity) in self.options]
 
+        max_y = -math.inf
+        min_y = math.inf
+        for (stock, quantity) in self.stocks:
+            _y = [stock.value(point) * quantity for point in x]
+            max_y = max(max_y, max(_y))
+            min_y = min(min_y, min(_y))
+
+        for (option, quantity) in self.options:
+            _y = [option.value(point) * quantity for point in x]
+            max_y = max(max_y, max(_y))
+            min_y = min(min_y, min(_y))
+
         fig = go.Figure()
+
+        # x axis line
+        fig.add_shape(
+            type="line",
+            x0=start,
+            y0=0,
+            x1=end,
+            y1=0,
+            line=dict(color="gray", width=2)
+        )
+
+        # y axis line
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=min_y,
+            x1=0,
+            y1=max_y,
+            line=dict(color="gray", width=2)
+        )
 
         for (stock, quantity) in self.stocks:
             _y = [stock.value(point) * quantity for point in x]
@@ -318,17 +411,15 @@ class Portfolio:
         fig.update_layout(
             showlegend=True,
             xaxis=dict(title='Stock Price'),
-            yaxis=dict(title='Portfolio Value'),
+            yaxis=dict(title='Profit/Loss'),
             title=self.name,
-            width=600,
-            height=400
         )
 
         st.plotly_chart(fig)
         st.markdown("---")
 
-    def add_stock(self, stock, quantity):
-        s = Stock(stock.price)
+    def add_stock(self, stock, quantity=1):
+        s = Stock(stock.price, stock.order_type)
         self.stocks.append((s, quantity))
 
     def add_option(self, option, quantity):
@@ -346,89 +437,120 @@ pages = {
 
 st.sidebar.title("Emir Soyturk")
 selection = st.sidebar.radio("Go to", list(pages.keys()))
+
 if selection == "Example Portfolios":
     st.title("Example Portfolios")
-    st.markdown("Example portfolios showcase different option trading strategies that you can explore and analyze. These portfolios are constructed using a combination of options and stocks, and their payoff profiles vary based on market conditions and strategy objectives.")
+    st.markdown("""
+        Example portfolios showcase different option trading strategies that you can explore and analyze. These portfolios are constructed using a combination of options and stocks, and their payoff profiles vary based on market conditions and strategy objectives.
+        
+        Each example portfolio consists of a name, a combination of stocks, and a set of options. By visualizing the portfolio's payoff, you can gain insights into how the portfolio performs under different scenarios and market conditions.
+        
+        You can adjust the risk-free rate, volatility, and time to customize the example portfolios based on your preferences and analyze their potential outcomes.
+        
+        Explore the example portfolios to learn about various option trading strategies and their potential payoff profiles.
+    """)
 
-    st.markdown("Each example portfolio consists of a name, a combination of stocks, and a set of options. By visualizing the portfolio's payoff, you can gain insights into how the portfolio performs under different scenarios and market conditions.")
-
-    st.markdown("You can adjust the risk-free rate, volatility, and time to customize the example portfolios based on your preferences and analyze their potential outcomes.")
-
-    st.markdown(
-        "Explore the example portfolios to learn about various option trading strategies and their potential payoff profiles.")
-
-    risk_free_rate = st.number_input(
-        "Risk Free Rate:",
-        value=0.05, step=0.01
-    )
-    volatility = st.number_input(
-        "Volatility:",
-        value=0.25, step=0.01
-    )
-    time = st.number_input(
-        "Time:",
-        value=1.0, step=0.1
-    )
+    risk_free_rate = st.number_input("Risk Free Rate:", value=0.05, step=0.01)
+    volatility = st.number_input("Volatility:", value=0.25, step=0.01)
+    time = st.number_input("Time:", value=1.0, step=0.1)
 
     portfolios = Utils.get_example_portfolios(risk_free_rate, volatility, time)
 
     for portfolio in portfolios:
-        portfolio.visualize(-100, 200, 5, True)
+        portfolio.visualize(0, 150, 1, True)
 
 elif selection == "Create Portfolio":
     st.title("Create a New Portfolio")
-    st.markdown("Create your own portfolio by selecting the number of stocks and options, providing their details, and visualizing the payoff profile of the portfolio.")
+    st.markdown("""
+        Create your own portfolio by selecting the number of stocks and options, providing their details, and visualizing the payoff profile of the portfolio.
+        
+        - Select the number of stocks and options, and provide their details.
+        - Visualize the payoff profile of the portfolio.
+    """)
 
     portfolio = Portfolio("Portfolio", [], [])
-    num_options, num_stocks, stock_price, option_details, risk_free_rate, volatility, time, auto_option_pricing = Utils.get_portfolio_details()
-    portfolio.add_stock(Stock(stock_price), num_stocks)
+    num_options, num_stocks, stock_price, stock_order_type, option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type = Utils.get_portfolio_details()
+
+    if not auto_option_pricing:
+        if arbitrage_check_type == "Simple":
+            for i in range(num_options):
+                option_type_1, option_action_1, strike_price_1, option_price_1 = option_details[
+                    i]
+                for j in range(i+1, num_options):
+                    option_type_2, option_action_2, strike_price_2, option_price_2 = option_details[
+                        j]
+
+                    # Check for arbitrage opportunity between pairs of options
+                    if option_type_1 == option_type_2 and option_action_1 == option_action_2:
+                        if option_type_1 == OptionType.CALL:
+                            if option_action_1 == OrderType.BUY:
+                                if strike_price_2 > strike_price_1 and option_price_2 > option_price_1:
+                                    st.error("Arbitrage Detected!")
+                                    st.error(
+                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
+                                    st.error(
+                                        f"The strike price of the {j + 1}th option is greater than the strike price of the {i + 1}th option, and the option price of the {j + 1}th option is greater than the option price of the {i + 1}th option. This is an arbitrage opportunity.")
+                            elif option_action_1 == OrderType.SELL:
+                                if strike_price_1 > strike_price_2 and option_price_1 > option_price_2:
+                                    st.error("Arbitrage Detected!")
+                                    st.error(
+                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
+                                    st.error(
+                                        f"The strike price of the {i + 1}th option is greater than the strike price of the {j + 1}th option, and the option price of the {i + 1}th option is greater than the option price of the {j + 1}th option. This is an arbitrage opportunity.")
+                        elif option_type_1 == OptionType.PUT:
+                            if option_action_1 == OrderType.BUY:
+                                if strike_price_1 > strike_price_2 and option_price_1 > option_price_2:
+                                    st.error("Arbitrage Detected!")
+                                    st.error(
+                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
+                                    st.error(
+                                        f"The strike price of the {i + 1}th option is greater than the strike price of the {j + 1}th option, and the option price of the {i + 1}th option is greater than the option price of the {j + 1}th option. This is an arbitrage opportunity.")
+                            elif option_action_1 == OrderType.SELL:
+                                if strike_price_2 > strike_price_1 and option_price_2 > option_price_1:
+                                    st.error("Arbitrage Detected!")
+                                    st.error(
+                                        f"Strike Price {i + 1}: {strike_price_1}, Strike Price {j + 1}: {strike_price_2}, Option Price {i + 1}: {option_price_1}, Option Price {j + 1}: {option_price_2}")
+                                    st.error(
+                                        f"The strike price of the {j + 1}th option is greater than the strike price of the {i + 1}th option, and the option price of the {j + 1}th option is greater than the option price of the {i + 1}th option. This is an arbitrage opportunity.")
+
+    if num_stocks > 0:
+        portfolio.add_stock(Stock(stock_price, stock_order_type), num_stocks)
 
     for i in range(num_options):
         option_type, option_action, strike_price, option_price = option_details[i]
-        option_type = OptionType.CALL if option_type == "CALL" else OptionType.PUT
-        order_type = OrderType.BUY if option_action == "BUY" else OrderType.SELL
         option_price = option_price if not auto_option_pricing else False
-        option = Option(
-            option_type, order_type, strike_price, stock_price, option_price, risk_free_rate, volatility, time
-        )
+        option = Option(option_type, option_action, strike_price,
+                        stock_price, option_price, risk_free_rate, volatility, time)
         portfolio.add_option(option, 1)
 
-    portfolio.visualize(-100, 200, 5, True)
+    portfolio.visualize(0, 200, 1, True)
 
 elif selection == "Black Scholes Model":
     st.title("Black Scholes Model")
-    st.markdown("The Black-Scholes model is a mathematical model used to calculate the theoretical price of options. It provides a framework for pricing European-style options, which can only be exercised at expiration. The model was developed by economists Fischer Black and Myron Scholes in 1973, and it assumes several key factors:")
-    st.markdown(
-        "- The price of the underlying asset follows a geometric Brownian motion.")
-    st.markdown(
-        "- The market is efficient and there are no transaction costs or restrictions on short-selling.")
-    st.markdown("- The risk-free interest rate is known and constant.")
-    st.markdown(
-        "- The volatility of the underlying asset's returns is constant.")
-
-    st.markdown("The Black-Scholes model calculates the fair value of an option by considering these factors and using mathematical formulas. It takes into account the current price of the underlying asset, the strike price of the option, the time to expiration, the risk-free interest rate, and the volatility of the underlying asset.")
-
-    st.markdown("The model provides insights into the factors that influence option prices, such as changes in the underlying asset's price, time to expiration, and volatility. It has been widely used in options trading and has contributed to the development of various option pricing and trading strategies.")
+    st.markdown("""
+        The Black-Scholes model is a mathematical model used to calculate the theoretical price of options. It provides a framework for pricing European-style options, which can only be exercised at expiration. The model was developed by economists Fischer Black and Myron Scholes in 1973.
+        
+        The Black-Scholes model calculates the fair value of an option by considering factors such as the current price of the underlying asset, the strike price of the option, the time to expiration, the risk-free interest rate, and the volatility of the underlying asset.
+        
+        The model provides insights into the factors that influence option prices, such as changes in the underlying asset's price, time to expiration, and volatility. It has been widely used in options trading and has contributed to the development of various option pricing and trading strategies.
+    """)
 
     st.markdown("---")
     Utils.black_scholes_analysis()
 
 elif selection == "Home":
     st.title("Welcome to Option Visualizer")
-    st.markdown("This is a simple tool to visualize the payoff of your option strategies. Options are financial derivatives that give the holder the right, but not the obligation, to buy or sell an underlying asset at a predetermined price within a specified time period.")
-
-    st.markdown("The main purposes of options include:")
-    st.markdown(
-        "- **Hedging**: Protecting against potential losses in an existing investment.")
-    st.markdown(
-        "- **Speculation**: Profiting from market movements without owning the underlying asset.")
-    st.markdown(
-        "- **Income Generation**: Selling options to collect premiums and generate income.")
-    st.markdown(
-        "- **Risk Management**: Using options to manage and control risk exposure.")
-    st.markdown(
-        "- **Leverage**: Controlling larger positions with a smaller investment.")
-
-    st.markdown("Please keep in mind that options trading involves risks and complexities. It's important to have a good understanding of the underlying assets, market conditions, and option strategies before engaging in options trading.")
+    st.markdown("""
+        This is a simple tool to visualize the payoff of your option strategies. Options are financial derivatives that give the holder the right, but not the obligation, to buy or sell an underlying asset at a predetermined price within a specified time period.
+        
+        The main purposes of options include:
+        - **Hedging**: Protecting against potential losses in an existing investment.
+        - **Speculation**: Profiting from market movements without owning the underlying asset.
+        - **Income Generation**: Selling options to collect premiums and generate income.
+        - **Risk Management**: Using options to manage and control risk exposure.
+        - **Leverage**: Controlling larger positions with a smaller investment.
+        
+        Please keep in mind that options trading involves risks and complexities. It's important to have a good understanding of the underlying assets, market conditions, and option strategies before engaging in options trading.
+    """)
 
     st.markdown("---")
