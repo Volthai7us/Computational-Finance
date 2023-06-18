@@ -48,61 +48,104 @@ class Utils:
 
     @staticmethod
     def get_portfolio_details():
-        num_options = st.number_input(
-            "Number of Options:",
-            min_value=0, value=1, step=1
-        )
-        num_stocks = st.number_input(
-            "Number of Stocks:",
-            min_value=0, value=0, step=1
-        )
-        spot_price = st.number_input(
-            "Spot Price:",
-            value=100.0, step=1.0
-        )
 
-        stock_order_type = OrderType.BUY if st.selectbox(
-            "Stock Order Type:",
-            ["BUY", "SELL"]
-        ) == "BUY" else OrderType.SELL
+        number_col = st.columns(2)
 
-        risk_free_rate = st.number_input(
-            "Risk Free Rate:",
-            value=0.05, step=0.01
-        )
-        volatility = st.number_input(
-            "Volatility:",
-            value=0.25, step=0.01
-        )
-        time = st.number_input(
-            "Time:",
-            value=1.0, step=0.1
-        )
+        with number_col[0]:
+            num_options = st.number_input(
+                "Number of Options:",
+                min_value=0, value=1, step=1
+            )
+        with number_col[1]:
+            num_stocks = st.number_input(
+                "Number of Stocks:",
+                min_value=0, value=0, step=1
+            )
 
-        auto_option_pricing = st.checkbox("Auto Option Pricing", value=True)
-        arbitrage_check_type = st.selectbox(
-            "Arbitrage Check Type:",
-            ["None", "Simple", "Black-Scholes"]
-        )
+        stock_col = st.columns(2)
+        with stock_col[0]:
+            spot_price = st.number_input(
+                "Spot Price:",
+                value=100.0, step=1.0
+            )
 
-        option_details = []
-
-        for i in range(num_options):
-            st.subheader(f"Option {i+1} Info")
-            option_type = OptionType.CALL if st.selectbox(
-                f"Option {i+1} Type:",
-                ["CALL", "PUT"]
-            ) == "CALL" else OptionType.PUT
-
-            option_action = OrderType.BUY if st.selectbox(
-                f"Option {i+1} Action:",
+        with stock_col[1]:
+            stock_order_type = OrderType.BUY if st.selectbox(
+                "Stock Order Type:",
                 ["BUY", "SELL"]
             ) == "BUY" else OrderType.SELL
 
-            strike_price = st.number_input(
-                f"Option {i+1} Strike Price:",
-                min_value=0.1, value=100.0, step=1.0
-            )
+        st.markdown("---")
+
+        checkbox_col = st.columns(3)
+
+        with checkbox_col[0]:
+            only_show_cumulative = st.checkbox(
+                "Only Show Cumulative", value=False)
+        with checkbox_col[1]:
+            auto_option_pricing = st.checkbox(
+                "Auto Option Pricing", value=True)
+        with checkbox_col[2]:
+            advanced_options = st.checkbox("Advanced Options", value=False)
+
+        risk_free_rate = 0.05
+        volatility = 0.25
+        time = 1
+        arbitrage_check_type = "Simple"
+
+        if advanced_options:
+            st.markdown("---")
+
+            advanced_col = st.columns(4)
+            with advanced_col[0]:
+                risk_free_rate = st.number_input(
+                    "Risk Free Rate:",
+                    value=0.05, step=0.01
+                )
+
+            with advanced_col[1]:
+                volatility = st.number_input(
+                    "Volatility:",
+                    value=0.25, step=0.01
+                )
+
+            with advanced_col[2]:
+                time = st.number_input(
+                    "Time:",
+                    value=1.0, step=0.1
+                )
+
+            with advanced_col[3]:
+                arbitrage_check_type = st.selectbox(
+                    "Arbitrage Check Type:",
+                    ["None", "Simple", "Black-Scholes"]
+                )
+
+        option_details = []
+
+        st.markdown("---")
+        for i in range(num_options):
+            st.subheader(f"Option {i+1} Info")
+
+            col1 = st.columns(3)
+
+            with col1[0]:
+                option_type = OptionType.CALL if st.selectbox(
+                    f"Option {i+1} Type:",
+                    ["CALL", "PUT"]
+                ) == "CALL" else OptionType.PUT
+
+            with col1[1]:
+                option_action = OrderType.BUY if st.selectbox(
+                    f"Option {i+1} Action:",
+                    ["BUY", "SELL"]
+                ) == "BUY" else OrderType.SELL
+
+            with col1[2]:
+                strike_price = st.number_input(
+                    f"Option {i+1} Strike Price:",
+                    min_value=0.1, value=100.0, step=1.0
+                )
             option_price = 0
             if not auto_option_pricing:
                 option_price = st.number_input(
@@ -152,7 +195,7 @@ class Utils:
                 (option_type, option_action, strike_price, option_price)
             )
 
-        return num_options, num_stocks, spot_price, stock_order_type,  option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type
+        return num_options, num_stocks, spot_price, stock_order_type,  option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type, only_show_cumulative
 
     @staticmethod
     def black_scholes_analysis():
@@ -236,7 +279,7 @@ class Utils:
             OptionType.PUT, OrderType.BUY, 120, 100, False, risk_free_rate, volatility, time)
 
         portfolios = [
-            Portfolio("Bull Bear Spreads", [], [
+            Portfolio("Bull Spreads", [], [
                 (option_buy_call_80, 1),
                 (option_sell_call_120, 1)]),
 
@@ -345,8 +388,14 @@ class Portfolio:
         self.stocks = stocks
         self.options = options
 
-    def visualize(self, start, end, step, separate=False):
-        x = np.arange(start, end, step)
+    def visualize(self, step, separate=False):
+        end = 0
+        for (stock, quantity) in self.stocks:
+            end = max(end, stock.price)
+        for (option, quantity) in self.options:
+            end = max(end, option.strike_price)
+            end = max(end, option.spot_price)
+        x = np.arange(0, end + 50, step)
         y = np.zeros(len(x))
         strike_prices = [option.strike_price for (
             option, quantity) in self.options]
@@ -368,9 +417,9 @@ class Portfolio:
         # x axis line
         fig.add_shape(
             type="line",
-            x0=start,
+            x0=0,
             y0=0,
-            x1=end,
+            x1=end + 50,
             y1=0,
             line=dict(color="gray", width=2)
         )
@@ -391,7 +440,7 @@ class Portfolio:
 
             if separate:
                 fig.add_trace(go.Scatter(
-                    x=x, y=_y, mode='lines', name=str(stock)))
+                    x=x, y=_y, mode='lines', name=str(stock if quantity == 1 else f"{quantity}x {stock}")))
 
         for (option, quantity) in self.options:
             _y = [option.value(point) * quantity for point in x]
@@ -399,7 +448,7 @@ class Portfolio:
 
             if separate:
                 fig.add_trace(go.Scatter(
-                    x=x, y=_y, mode='lines', name=str(option)))
+                    x=x, y=_y, mode='lines', name=(str(option if quantity == 1 else f"{quantity}x {option}"))))
 
         # if not separate:
         fig.add_trace(go.Scatter(x=x, y=y, mode='lines',
@@ -450,14 +499,22 @@ if selection == "Example Portfolios":
         Explore the example portfolios to learn about various option trading strategies and their potential payoff profiles.
     """)
 
-    risk_free_rate = st.number_input("Risk Free Rate:", value=0.05, step=0.01)
-    volatility = st.number_input("Volatility:", value=0.25, step=0.01)
-    time = st.number_input("Time:", value=1.0, step=0.1)
+    col = st.columns(3)
+
+    with col[0]:
+        risk_free_rate = st.number_input(
+            "Risk Free Rate:", value=0.05, step=0.01)
+    with col[1]:
+        volatility = st.number_input("Volatility:", value=0.25, step=0.01)
+    with col[2]:
+        time = st.number_input("Time:", value=1.0, step=0.1)
+    only_show_cumulative = st.checkbox(
+        "Only Show Cumulative", value=False)
 
     portfolios = Utils.get_example_portfolios(risk_free_rate, volatility, time)
 
     for portfolio in portfolios:
-        portfolio.visualize(0, 150, 1, True)
+        portfolio.visualize(1, not only_show_cumulative)
 
 elif selection == "Create Portfolio":
     st.title("Create a New Portfolio")
@@ -469,7 +526,7 @@ elif selection == "Create Portfolio":
     """)
 
     portfolio = Portfolio("Portfolio", [], [])
-    num_options, num_stocks, stock_price, stock_order_type, option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type = Utils.get_portfolio_details()
+    num_options, num_stocks, stock_price, stock_order_type, option_details, risk_free_rate, volatility, time, auto_option_pricing, arbitrage_check_type, only_show_cumulative = Utils.get_portfolio_details()
 
     if not auto_option_pricing:
         if arbitrage_check_type == "Simple":
@@ -523,7 +580,7 @@ elif selection == "Create Portfolio":
                         stock_price, option_price, risk_free_rate, volatility, time)
         portfolio.add_option(option, 1)
 
-    portfolio.visualize(0, 200, 1, True)
+    portfolio.visualize(1, not only_show_cumulative)
 
 elif selection == "Black Scholes Model":
     st.title("Black Scholes Model")
